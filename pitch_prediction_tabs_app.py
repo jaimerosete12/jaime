@@ -43,6 +43,8 @@ def build_dataset_inplay(pitcher_id, batter_hand):
 
 # --- Entrenamiento y predicción compartidos ---
 def train_model(df, casino_line):
+    from pybaseball import statcast
+
     # Validar que 'release_speed' exista
     if 'release_speed' not in df.columns:
         posibles = [col for col in df.columns if 'speed' in col]
@@ -50,11 +52,14 @@ def train_model(df, casino_line):
             df['release_speed'] = df[posibles[0]]
             st.warning(f"No se encontró 'release_speed'. Se usó '{posibles[0]}' como alternativa.")
         else:
-            raise ValueError("No se encontró 'release_speed' ni columnas alternativas. No se puede entrenar.")
+            st.warning("No se encontraron datos suficientes del pitcher. Usando datos globales como respaldo.")
+            df = statcast('2023-04-01', '2023-09-30')
+            df = df[df['pitch_number'] == 1][['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'description']].dropna()
+            df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
+            df = df.select_dtypes(include=['number'])
 
-    # Validar cantidad de datos
-    if len(df) < 5:
-        raise ValueError("No hay suficientes datos para entrenar el modelo. Prueba con otro pitcher o periodo.")
+    if 'release_speed' not in df.columns or len(df) < 5:
+        raise ValueError("Incluso con datos globales no fue posible entrenar el modelo. Intenta más tarde.")
 
     df['target'] = df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under')
     X = df.drop(columns=['release_speed', 'target'])
