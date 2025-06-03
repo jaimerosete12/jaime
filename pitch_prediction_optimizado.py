@@ -28,6 +28,30 @@ def get_batter_hand(batter_name):
 def build_dataset_first(pitcher_id, batter_hand):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] <= 3) & (data['inning'] <= 2)]
+
+    # Intentar filtrar por 'stand', pero solo si hay suficientes registros
+    if batter_hand in df['stand'].unique():
+        filtered = df[df['stand'] == batter_hand]
+        if len(filtered) > 10:
+            df = filtered
+
+    # Si quedan menos de 10 registros tras el filtro, regresar al dataset completo
+    if df.shape[0] < 10:
+        df = data[(data['pitch_number'] <= 3) & (data['inning'] <= 2)]
+
+    df = df[['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'inning', 'balls', 'strikes',
+             'on_1b', 'on_2b', 'on_3b', 'description']].dropna()
+    df = df[df['release_speed'].between(40, 105)]
+    df['runners_on'] = df[['on_1b', 'on_2b', 'on_3b']].notnull().sum(axis=1)
+    df = df.drop(columns=['on_1b', 'on_2b', 'on_3b'])
+    df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
+    df = df.select_dtypes(include=['number'])
+    return df
+
+# --- Dataset para pitcheo en juego ---
+def build_dataset_inplay(pitcher_id, batter_hand):
+    data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
+    df = data[(data['pitch_number'] > 1) & (data['inning'] > 1)]
     if batter_hand in df['stand'].unique():
         filtered = df[df['stand'] == batter_hand]
         if len(filtered) > 5:
