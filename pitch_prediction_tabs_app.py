@@ -27,8 +27,7 @@ def build_dataset_first(pitcher_id, batter_hand):
     df = df[df['stand'] == batter_hand]
     df = df[['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'description']].dropna()
     df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
-    if 'game_date' in df.columns:
-        df = df.drop(columns=['game_date'])
+    df = df.select_dtypes(include=['number'])
     return df
 
 # --- MODELO EN JUEGO ---
@@ -39,8 +38,7 @@ def build_dataset_inplay(pitcher_id, batter_hand):
     df['release_speed_prev'] = df.groupby('game_pk')['release_speed'].shift(1)
     df = df.dropna(subset=['release_speed_prev'])
     df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
-    if 'game_date' in df.columns:
-        df = df.drop(columns=['game_date'])
+    df = df.select_dtypes(include=['number'])
     return df
 
 # --- Entrenamiento y predicción compartidos ---
