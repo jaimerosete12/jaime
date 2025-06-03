@@ -16,7 +16,7 @@ def get_pitcher_id(pitcher_name):
 def get_batter_hand(batter_name):
     try:
         last, first = batter_name.split(" ")[-1], " ".join(batter_name.split(" ")[:-1])
-        return playerid_reverse_lookup(last + ", " + first)['throws'].values[0]
+        return playerid_reverse_lookup(first + " " + last)['bats'].values[0]
     except:
         return 'R'
 
