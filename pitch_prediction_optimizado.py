@@ -139,7 +139,13 @@ with tab1:
             if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
                 st.warning("Todos los datos son de una sola clase (solo over o solo under). Modelo no puede entrenar.")
                 raise ValueError("Target sin clases suficientes")
-            model, features, acc = train_model(df, casino_line)
+            if df.empty:
+            st.warning("No se encontraron datos suficientes para ese pitcher en juego. Prueba con otro pitcher o rango.")
+            raise ValueError("DataFrame vacío")
+        if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
+            st.warning("Todos los datos son de una sola clase (solo over o solo under). Modelo no puede entrenar.")
+            raise ValueError("Target sin clases suficientes")
+        model, features, acc = train_model(df, casino_line)
             sample = {
                 'outs_when_up': 0,
                 'inning': 1,
