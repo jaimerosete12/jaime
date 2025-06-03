@@ -26,7 +26,7 @@ def get_batter_hand(batter_name):
 
 # --- Dataset para primer pitcheo ---
 def build_dataset_first(pitcher_id, batter_hand):
-    data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
+    data = statcast_pitcher('2019-01-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] <= 3) & (data['inning'] <= 2)]
 
     # Intentar filtrar por 'stand', pero solo si hay suficientes registros
@@ -50,7 +50,7 @@ def build_dataset_first(pitcher_id, batter_hand):
 
 # --- Dataset para pitcheo en juego ---
 def build_dataset_inplay(pitcher_id, batter_hand):
-    data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
+    data = statcast_pitcher('2019-01-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] > 1) & (data['inning'] > 1)]
     if batter_hand in df['stand'].unique():
         filtered = df[df['stand'] == batter_hand]
