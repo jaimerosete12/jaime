@@ -1,6 +1,6 @@
 streamlit
-pybaseball
+requests
 pandas
 scikit-learn
 xgboost
-requests
+pybaseball
