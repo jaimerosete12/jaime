@@ -157,6 +157,16 @@ with tab1:
                 'description_called_strike': 1
             }
             pred, prob = predict(model, features, sample)
+            top_features = sorted(sample.items(), key=lambda x: x[1], reverse=True)[:3]
+            top_feat_str = ', '.join([f'{k}' for k, v in top_features if v > 0])
+            explanation = f"Este pitcheo tiene alta probabilidad de ser {'OVER' if pred == 'over' else 'UNDER'} la línea de {casino_line} mph."
+            st.markdown(f"<small>📌 {explanation}</small>", unsafe_allow_html=True)
+            if top_feat_str:
+                st.markdown(f"<small>🧠 Top features que influencian: {top_feat_str}</small>", unsafe_allow_html=True)
+            color = 'lime' if pred == 'over' else 'red'
+            st.markdown(f"<h4 style='color:{color}'>🔎 Predicción: {pred.upper()} ({round(prob*100, 2)}% confianza)</h4>", unsafe_allow_html=True)
+            color = 'lime' if pred == 'over' else 'red'
+            st.markdown(f"<h4 style='color:{color}'>🔎 Predicción: {pred.upper()} ({round(prob*100, 2)}% confianza)</h4>", unsafe_allow_html=True)
             st.success(f"Predicción: {pred.upper()} ({round(prob*100, 2)}% confianza)")
         except Exception as e:
             st.error(f"Error: {e}")
@@ -169,8 +179,8 @@ with tab2:
     inning = st.number_input("Entrada", min_value=1, max_value=9, value=5)
     outs = st.number_input("Outs", min_value=0, max_value=2, value=1)
     release_speed_prev = st.number_input("Velocidad pitcheo anterior", value=93.5, step=0.1)
-    pitch_type = st.selectbox("Tipo pitcheo anterior", ['FF', 'SL', 'CH', 'CU'])
-    description = st.selectbox("Resultado anterior", ['called_strike', 'ball', 'foul', 'swinging_strike'])
+    pitch_type = st.radio("Tipo pitcheo anterior", ['FF', 'SL', 'CH', 'CU'], horizontal=True)
+    description = st.radio("Resultado anterior", ['called_strike', 'ball', 'foul', 'swinging_strike'], horizontal=True)
     if st.button("Predecir siguiente pitcheo"):
         try:
             pitcher_id = get_pitcher_id(pitcher)
@@ -209,6 +219,8 @@ with tab3:
                     st.warning("No se encontró pitcheo reciente para ese pitcher.")
                 else:
                     pred, prob = predict_next_pitch(pitches, casino_line)
+                    color = 'lime' if pred == 'over' else 'red'
+                    st.markdown(f"<h4 style='color:{color}'>🔎 Predicción en Vivo: {pred.upper()} ({round(prob*100, 2)}% confianza)</h4>", unsafe_allow_html=True)
                     st.success(f"Predicción en Vivo: {pred.upper()} ({round(prob*100, 2)}% confianza)")
             except Exception as e:
                 st.error(f"Error: {e}")
