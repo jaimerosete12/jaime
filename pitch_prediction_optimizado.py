@@ -130,6 +130,15 @@ with tab1:
             pitcher_id = get_pitcher_id(pitcher)
             batter_hand = get_batter_hand(batter)
             df = build_dataset_first(pitcher_id, batter_hand)
+            if df.empty:
+                st.warning("No se encontraron datos suficientes para ese pitcher en el primer inning. Prueba con otro pitcher o rango.")
+                raise ValueError("DataFrame vacío")
+            if df.empty:
+                st.warning("No se encontraron datos suficientes para ese pitcher en juego. Prueba con otro pitcher o rango.")
+                raise ValueError("DataFrame vacío")
+            if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
+                st.warning("Todos los datos son de una sola clase (solo over o solo under). Modelo no puede entrenar.")
+                raise ValueError("Target sin clases suficientes")
             model, features, acc = train_model(df, casino_line)
             sample = {
                 'outs_when_up': 0,
