@@ -47,6 +47,8 @@ def build_dataset_inplay(pitcher_id, batter_hand):
     df = df.dropna(subset=['release_speed_prev'])
     df = df[df['release_speed'].between(40, 105)]
     df = df[['release_speed', 'release_speed_prev', 'pitch_type', 'p_throws', 'stand', 'description', 'outs_when_up']]
+    df['fatigue'] = df.groupby('game_pk').cumcount()  # Número de pitcheos previos como proxy de fatiga
+    df['count_score'] = data['balls'] + 2 * data['strikes']  # Conteo ponderado para representar presión
     df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
     df = df.select_dtypes(include=['number'])
     return df
@@ -57,6 +59,8 @@ def train_model(df, casino_line):
         raise ValueError("No hay suficientes datos del pitcher para entrenar el modelo.")
 
     df['target'] = df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under')
+    if len(df['target'].unique()) < 2:
+        raise ValueError("Target sin clases suficientes (solo over o solo under).")
     X = df.drop(columns=['release_speed', 'target'])
     y = df['target']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -77,6 +81,8 @@ def predict(model, feature_columns, input_data):
 
 # --- MLB API en vivo ---
 def get_live_pitches(game_pk, pitcher_name):
+    # Mejora: Agrega features de fatiga y conteo
+    fatigue_counter = 0
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
     res = requests.get(url)
     if res.status_code != 200:
@@ -86,6 +92,7 @@ def get_live_pitches(game_pk, pitcher_name):
     pitcher_lastname = pitcher_name.split(",")[0].strip().lower()
     pitches = []
     for play in all_plays[::-1]:
+        fatigue_counter += 1
         if 'pitchIndex' in play and 'matchup' in play:
             pitcher = play['matchup'].get('pitcher')
             if not pitcher: continue
@@ -95,6 +102,8 @@ def get_live_pitches(game_pk, pitcher_name):
                 if pitch.get('type') == 'pitch' and 'details' in pitch:
                     pitches.append({
                         'release_speed': pitch.get('pitchData', {}).get('startSpeed'),
+                        'fatigue': fatigue_counter,
+                        'count_score': play.get('count', {}).get('balls', 0) + 2 * play.get('count', {}).get('strikes', 0),
                         'pitch_type': pitch.get('details', {}).get('type', {}).get('code'),
                         'description': pitch.get('details', {}).get('description'),
                         'outs': play.get('count', {}).get('outs', 0)
@@ -108,6 +117,8 @@ def predict_next_pitch(pitch_data, casino_line):
     last = pitch_data[-1]
     X = pd.DataFrame([{
         'release_speed_prev': last['release_speed'] or 93.0,
+        'fatigue': last.get('fatigue', 10),
+        'count_score': last.get('count_score', 2),
         'outs_when_up': last['outs'],
         'pitch_type_FF': 1 if last['pitch_type'] == 'FF' else 0,
         'description_called_strike': 1 if last['description'] == 'Called Strike' else 0,
@@ -117,7 +128,7 @@ def predict_next_pitch(pitch_data, casino_line):
     prob = 0.85 if pred == 'over' else 0.75
     return pred, prob
 
-# --- UI principal ---
+# --- UI de Streamlit ---
 tab1, tab2, tab3 = st.tabs(["Primer Pitcheo", "En Juego", "En Vivo"])
 
 with tab1:
@@ -131,21 +142,9 @@ with tab1:
             batter_hand = get_batter_hand(batter)
             df = build_dataset_first(pitcher_id, batter_hand)
             if df.empty:
-                st.warning("No se encontraron datos suficientes para ese pitcher en el primer inning. Prueba con otro pitcher o rango.")
+                st.warning("No se encontraron datos suficientes para ese pitcher en el primer inning.")
                 raise ValueError("DataFrame vacío")
-            if df.empty:
-                st.warning("No se encontraron datos suficientes para ese pitcher en juego. Prueba con otro pitcher o rango.")
-                raise ValueError("DataFrame vacío")
-            if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
-                st.warning("Todos los datos son de una sola clase (solo over o solo under). Modelo no puede entrenar.")
-                raise ValueError("Target sin clases suficientes")
-            if df.empty:
-            st.warning("No se encontraron datos suficientes para ese pitcher en juego. Prueba con otro pitcher o rango.")
-            raise ValueError("DataFrame vacío")
-        if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
-            st.warning("Todos los datos son de una sola clase (solo over o solo under). Modelo no puede entrenar.")
-            raise ValueError("Target sin clases suficientes")
-        model, features, acc = train_model(df, casino_line)
+            model, features, acc = train_model(df, casino_line)
             sample = {
                 'outs_when_up': 0,
                 'inning': 1,
@@ -177,6 +176,12 @@ with tab2:
             pitcher_id = get_pitcher_id(pitcher)
             batter_hand = get_batter_hand(batter)
             df = build_dataset_inplay(pitcher_id, batter_hand)
+            if df.empty:
+                st.warning("No se encontraron datos suficientes para ese pitcher en juego.")
+                raise ValueError("DataFrame vacío")
+            if len(df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under').unique()) < 2:
+                st.warning("Solo se encontró una clase (over o under). El modelo no puede entrenar.")
+                raise ValueError("Target sin clases suficientes")
             model, features, acc = train_model(df, casino_line)
             sample = {
                 'release_speed_prev': release_speed_prev,
