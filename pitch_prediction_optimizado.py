@@ -28,7 +28,9 @@ def get_batter_hand(batter_name):
 def build_dataset_first(pitcher_id, batter_hand):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] <= 3) & (data['inning'] <= 2)]  # relajado para mayor cobertura
-    df = df[df['stand'] == batter_hand]
+    if batter_hand in df['stand'].unique():
+        if batter_hand in df['stand'].unique():
+        df = df[df['stand'] == batter_hand]
     df = df[['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'inning', 'balls', 'strikes',
              'on_1b', 'on_2b', 'on_3b', 'description']].dropna()
     df = df[df['release_speed'].between(40, 105)]
