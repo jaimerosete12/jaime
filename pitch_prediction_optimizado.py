@@ -64,7 +64,7 @@ def train_model(df, casino_line):
     X = df.drop(columns=['release_speed', 'target'])
     y = df['target']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
+    model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', objective='multi:softprob')
     model.fit(X_train, y_train)
     acc = accuracy_score(y_test, model.predict(X_test))
     return model, X.columns, acc
