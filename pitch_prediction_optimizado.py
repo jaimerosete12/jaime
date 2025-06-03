@@ -43,11 +43,11 @@ def build_dataset_inplay(pitcher_id, batter_hand):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data.dropna(subset=['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'description'])
     df = df[df['stand'] == batter_hand]
-    df['release_speed_prev'] = df.groupby('game_pk')['release_speed'].shift(1)
+    df['release_speed_prev'] = df['release_speed'].shift(1)  # Shift general sin agrupar por game_pk
     df = df.dropna(subset=['release_speed_prev'])
     df = df[df['release_speed'].between(40, 105)]
     df = df[['release_speed', 'release_speed_prev', 'pitch_type', 'p_throws', 'stand', 'description', 'outs_when_up']]
-    df['fatigue'] = df.groupby('game_pk').cumcount()  # Número de pitcheos previos como proxy de fatiga
+    df['fatigue'] = df.reset_index().index  # Uso simple de índice como fatiga estimada  # Número de pitcheos previos como proxy de fatiga
     df['count_score'] = data['balls'] + 2 * data['strikes']  # Conteo ponderado para representar presión
     df = pd.get_dummies(df, columns=['pitch_type', 'p_throws', 'stand', 'description'], drop_first=True)
     df = df.select_dtypes(include=['number'])
