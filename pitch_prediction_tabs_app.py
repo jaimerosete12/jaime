@@ -48,6 +48,7 @@ def train_model(df, casino_line):
         posibles = [col for col in df.columns if 'speed' in col]
         if posibles:
             df['release_speed'] = df[posibles[0]]
+            st.warning(f"No se encontró 'release_speed'. Se usó '{posibles[0]}' como alternativa.")
         else:
             raise ValueError("No se encontró 'release_speed' ni columnas alternativas. No se puede entrenar.")
 
