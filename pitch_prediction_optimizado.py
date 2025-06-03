@@ -61,13 +61,17 @@ def train_model(df, casino_line):
     df['target'] = df['release_speed'].apply(lambda x: 'over' if x > casino_line else 'under')
     if len(df['target'].unique()) < 2:
         raise ValueError("Target sin clases suficientes (solo over o solo under).")
+    from sklearn.preprocessing import LabelEncoder
     X = df.drop(columns=['release_speed', 'target'])
     y = df['target']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
     if len(set(y_train)) < 2:
         raise ValueError("y_train contiene solo una clase. No se puede entrenar el modelo.")
     model = XGBClassifier(use_label_encoder=False, eval_metric='logloss', objective='multi:softprob')
     model.fit(X_train, y_train)
+    model.label_encoder_ = le  # guardar para decodificar luego
     acc = accuracy_score(y_test, model.predict(X_test))
     return model, X.columns, acc
 
@@ -77,7 +81,8 @@ def predict(model, feature_columns, input_data):
         if col not in input_df.columns:
             input_df[col] = 0
     input_df = input_df[feature_columns]
-    pred = model.predict(input_df)[0]
+    pred_encoded = model.predict(input_df)[0]
+    pred = model.label_encoder_.inverse_transform([pred_encoded])[0]
     prob = model.predict_proba(input_df).max()
     return pred, prob
 
