@@ -1,12 +1,10 @@
 # Requisitos:
-# pip install streamlit requests pandas scikit-learn xgboost pybaseball matplotlib seaborn
+# pip install streamlit requests pandas scikit-learn xgboost pybaseball
 
 import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 from xgboost import XGBClassifier
 from pybaseball import statcast_pitcher, playerid_lookup, playerid_reverse_lookup
 from sklearn.model_selection import train_test_split
@@ -31,12 +29,11 @@ def get_batter_hand(batter_name):
 def build_dataset_first(pitcher_id, batter_hand):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] == 1) & (data['inning'] == 1)]
+    df = df.drop_duplicates(subset='game_date', keep='first').sort_values(by='game_date', ascending=False).head(10)
     if batter_hand in df['stand'].unique():
         filtered = df[df['stand'] == batter_hand]
-        if len(filtered) > 10:
+        if len(filtered) >= 5:
             df = filtered
-    if df.shape[0] < 10:
-        df = data[(data['pitch_number'] == 1) & (data['inning'] == 1)]
     df = df[['release_speed', 'pitch_type', 'p_throws', 'stand', 'outs_when_up', 'inning', 'balls', 'strikes',
              'on_1b', 'on_2b', 'on_3b', 'description']].dropna()
     df = df[df['release_speed'].between(40, 105)]
@@ -50,21 +47,11 @@ def build_dataset_first(pitcher_id, batter_hand):
 def mostrar_ultimos_lanzamientos(pitcher_id, linea_casino):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] == 1) & (data['inning'] == 1)].copy()
+    df = df.drop_duplicates(subset='game_date', keep='first')
     df = df[['game_date', 'release_speed']].dropna().sort_values(by='game_date', ascending=False).head(10)
     df['Resultado'] = np.where(df['release_speed'] > linea_casino, 'Over', 'Under')
-    st.subheader("Resumen de los últimos 10 primeros pitcheos")
+    st.subheader("Resumen de los últimos primeros pitcheos (1er lanzamiento por juego)")
     st.dataframe(df)
-
-    # Gráfico de barras
-    fig, ax = plt.subplots()
-    sns.barplot(data=df, x='game_date', y='release_speed', hue='Resultado', palette={'Over': 'green', 'Under': 'red'}, ax=ax)
-    ax.axhline(linea_casino, color='blue', linestyle='--', label='Línea del Casino')
-    ax.set_title("Velocidad de los últimos 10 primeros pitcheos")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Velocidad (mph)")
-    ax.tick_params(axis='x', rotation=45)
-    ax.legend()
-    st.pyplot(fig)
     return df
 
 # --- Dataset para pitcheo en juego ---
