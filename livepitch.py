@@ -232,4 +232,3 @@ with tabs[2]:
                     st.markdown(f"<h4 style='color:{color}'>🔎 Predicción en Vivo: {pred} ({round(prob*100, 2)}% confianza)</h4>", unsafe_allow_html=True)
             except Exception as e:
                 st.error(f"Error: {e}")
-                
