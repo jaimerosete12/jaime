@@ -9,6 +9,7 @@ from xgboost import XGBClassifier
 from pybaseball import statcast_pitcher, playerid_lookup, playerid_reverse_lookup
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
 
 st.set_page_config(page_title="MLB Pitch Predictor", layout="wide")
 tabs = st.tabs(["🔍 Primer Pitcheo", "🎯 Predicción En Juego", "🌐 Live API"])
@@ -28,8 +29,9 @@ def get_batter_hand(batter_name):
 # --- Dataset para primer pitcheo ---
 def build_dataset_first(pitcher_id, batter_hand):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
-    df = data[(data['pitch_number'] == 1) & (data['inning'] == 1)]
-    df = df.drop_duplicates(subset='game_date', keep='first').sort_values(by='game_date', ascending=False).head(10)
+    first_pitches = data[(data['pitch_number'] == 1) & (data['inning'] == 1)].copy()
+    recent_games = first_pitches.drop_duplicates(subset='game_date', keep='first').sort_values('game_date', ascending=False).head(10)
+    df = recent_games.copy()
     if batter_hand in df['stand'].unique():
         filtered = df[df['stand'] == batter_hand]
         if len(filtered) >= 5:
@@ -50,9 +52,14 @@ def mostrar_ultimos_lanzamientos(pitcher_id, linea_casino):
     df = df.drop_duplicates(subset='game_date', keep='first')
     df = df[['game_date', 'release_speed']].dropna().sort_values(by='game_date', ascending=False).head(10)
     df['Resultado'] = np.where(df['release_speed'] > linea_casino, 'Over', 'Under')
-    st.subheader("Resumen de los últimos primeros pitcheos (1er lanzamiento por juego)")
-    st.dataframe(df)
-    return df
+    df['color'] = df['Resultado'].apply(lambda x: '🟩' if x == 'Over' else '🟥')
+    df['Resumen'] = df['color'] + " " + df['Resultado']
+    df_display = df[['game_date', 'release_speed', 'Resumen']].rename(columns={
+        'game_date': 'Fecha', 'release_speed': 'Velocidad (mph)', 'Resumen': 'Resultado'
+    })
+    st.subheader("Resumen de primeros lanzamientos en los últimos juegos")
+    st.dataframe(df_display, use_container_width=True)
+    return df_display
 
 # --- Dataset para pitcheo en juego ---
 def build_dataset_inplay(pitcher_id, batter_hand):
@@ -118,7 +125,6 @@ def predict_next_pitch(pitch_data, casino_line):
     pred = 'Over' if X['release_speed_prev'][0] > casino_line else 'Under'
     prob = 0.85 if pred == 'Over' else 0.75
     return pred, prob
-
     
 # === TAB 1: Primer Pitcheo ===
 with tabs[0]:
