@@ -119,7 +119,7 @@ def predict_next_pitch(pitch_data, casino_line):
     pred = 'Over' if X['release_speed_prev'][0] > casino_line else 'Under'
     prob = 0.85 if pred == 'Over' else 0.75
     return pred, prob
-
+    
 # === TAB 1: Primer Pitcheo ===
 with tabs[0]:
     st.header("🔍 Predicción para Primer Pitcheo")
