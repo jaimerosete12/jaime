@@ -51,9 +51,21 @@ def mostrar_ultimos_lanzamientos(pitcher_id, linea_casino):
     data = statcast_pitcher('2022-03-01', '2024-11-01', pitcher_id)
     df = data[(data['pitch_number'] == 1) & (data['inning'] == 1)].copy()
     df = df[['game_date', 'release_speed']].dropna().sort_values(by='game_date', ascending=False).head(10)
-    df['casino_line'] = linea_casino
     df['Resultado'] = np.where(df['release_speed'] > linea_casino, 'Over', 'Under')
-    return df.reset_index(drop=True)
+    st.subheader("Resumen de los últimos 10 primeros pitcheos")
+    st.dataframe(df)
+
+    # Gráfico de barras
+    fig, ax = plt.subplots()
+    sns.barplot(data=df, x='game_date', y='release_speed', hue='Resultado', palette={'Over': 'green', 'Under': 'red'}, ax=ax)
+    ax.axhline(linea_casino, color='blue', linestyle='--', label='Línea del Casino')
+    ax.set_title("Velocidad de los últimos 10 primeros pitcheos")
+    ax.set_xlabel("Fecha")
+    ax.set_ylabel("Velocidad (mph)")
+    ax.tick_params(axis='x', rotation=45)
+    ax.legend()
+    st.pyplot(fig)
+    return df
 
 # --- Dataset para pitcheo en juego ---
 def build_dataset_inplay(pitcher_id, batter_hand):
@@ -119,6 +131,7 @@ def predict_next_pitch(pitch_data, casino_line):
     pred = 'Over' if X['release_speed_prev'][0] > casino_line else 'Under'
     prob = 0.85 if pred == 'Over' else 0.75
     return pred, prob
+
     
 # === TAB 1: Primer Pitcheo ===
 with tabs[0]:
